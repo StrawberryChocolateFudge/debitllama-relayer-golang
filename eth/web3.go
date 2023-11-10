@@ -2,17 +2,14 @@ package eth
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"log"
 	"math"
 	"math/big"
-	"os"
 	"strconv"
 
 	ethUnit "github.com/DeOne4eg/eth-unit-converter"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	crypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -27,22 +24,6 @@ func getClient(chainid ChainIds) (*ethclient.Client, error) {
 	}
 
 	return provider, err
-}
-
-func getKeysFromEnv() (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
-	key := os.Getenv("RELAYER_PRIVATEKEY")
-
-	privatekey, err := crypto.HexToECDSA(key)
-	if err != nil {
-		panic(err)
-	}
-	publicKey := privatekey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		panic("Invalid key")
-	}
-
-	return privatekey, publicKeyECDSA
 }
 
 func CreateKs(password string) {
