@@ -5,6 +5,7 @@ import (
 	"log"
 
 	eth "debitllama.com/relayer/eth"
+	workers "debitllama.com/relayer/workers"
 	cli "github.com/urfave/cli"
 )
 
@@ -19,10 +20,21 @@ func GetApp() *cli.App {
 		Usage: "Password to access the keystore",
 	}
 
-	keyStorePathFlag := &cli.StringFlag{
-		Name:  "path",
+	xrelayerFlag := &cli.StringFlag{
+		Name:  "xrelayer",
 		Value: "",
-		Usage: "The path to the keystore",
+		Usage: "The X-Relayer authentication header for the relayer",
+	}
+
+	authkeyFlag := &cli.StringFlag{
+		Name:  "authorization",
+		Value: "",
+		Usage: "The bearer token to authenticate the debitllama API",
+	}
+
+	devenvFlag := &cli.BoolFlag{
+		Name:  "dev",
+		Usage: "Add this flag when developing using localhost",
 	}
 
 	app.Commands = []cli.Command{
@@ -40,12 +52,29 @@ func GetApp() *cli.App {
 			Aliases: []string{"r"},
 			Usage:   "Start relaying transactions",
 			Action: func(c *cli.Context) error {
-				fmt.Println("wanna start relaying txs")
+				xrelayer := c.String("xrelayer")
+				authkey := c.String("authorization")
+				devenv := c.Bool("dev")
+				password := c.String("password")
+
+				if xrelayer == "" {
+					log.Fatalln("Missing XRelayer token")
+				}
+				if authkey == "" {
+					log.Fatalln("Missing authkey")
+				}
+				if password == "" {
+					log.Fatalln("Missing password")
+				}
+
+				workers.StartWorkers(devenv, xrelayer, authkey, password)
 				return nil
 			},
 			Flags: []cli.Flag{
 				passwdFlag,
-				keyStorePathFlag,
+				xrelayerFlag,
+				authkeyFlag,
+				devenvFlag,
 			},
 		},
 		{
@@ -71,7 +100,7 @@ func GetApp() *cli.App {
 	return app
 }
 
-//Hello returns a greeting for something as a test
+// Hello returns a greeting for something as a test
 func Hello(name string) {
 	fmt.Printf("hi, %v. Welcome!", name)
 }
