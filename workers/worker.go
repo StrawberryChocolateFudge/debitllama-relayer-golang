@@ -13,22 +13,29 @@ import (
 )
 
 func StartWorkers(
-	devenv bool,
-	xrelayer string,
-	authkey string,
-	password string,
+	args CliArgs,
 ) {
 
 	scheduler := gocron.NewScheduler(time.UTC)
 
 	_, err := scheduler.Every(30).Minutes().Do(func() {
-		url := GetUrl(devenv)
-		created, _, err := GetAssignmentCount(url, xrelayer, authkey)
+		url := GetUrl(args.Devenv)
+		created, _, err := GetAssignmentCount(url, args.Xrelayer, args.Authkey)
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		spawnWorkers(created, xrelayer, authkey, devenv)
+		if created == nil {
+			return
+		}
+		jobs, chainids := SumAssignmentsCountFromFlags(args.Chains, created)
+
+		if args.Devenv {
+			spawnWorkers(1, args.Xrelayer, args.Authkey, args.Devenv, args.Password, chainids)
+		} else {
+			spawnWorkers(jobs, args.Xrelayer, args.Authkey, args.Devenv, args.Password, chainids)
+		}
+
 	})
 
 	if err != nil {
@@ -48,13 +55,13 @@ func StartWorkers(
 
 }
 
-func spawnWorkers(count int, xrelayer string, authkey string, devenv bool) {
+func spawnWorkers(count int, xrelayer string, authkey string, devenv bool, password string, chainids []ChainIds) {
 	var wg sync.WaitGroup
 	wg.Add(count)
 
 	for i := 0; i < count; i++ {
 		fmt.Println("Spawning worker ", i)
-		go work(&wg, xrelayer, authkey, devenv)
+		go work(&wg, xrelayer, authkey, devenv, password, chainids[i])
 		// Sleep before starting another go routine
 		time.Sleep(50 * time.Millisecond)
 	}
@@ -62,8 +69,8 @@ func spawnWorkers(count int, xrelayer string, authkey string, devenv bool) {
 	wg.Wait()
 }
 
-func work(wg *sync.WaitGroup, xrelayer string, authkey string, devenv bool) {
-	err := SolveAnAssignment(xrelayer, authkey, devenv)
+func work(wg *sync.WaitGroup, xrelayer string, authkey string, devenv bool, password string, chainids ChainIds) {
+	err := SolveAnAssignment(xrelayer, authkey, devenv, password, chainids)
 	if err != nil {
 		fmt.Println(err)
 	}

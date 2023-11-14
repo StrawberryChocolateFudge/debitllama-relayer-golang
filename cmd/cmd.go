@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 
-	eth "debitllama.com/relayer/eth"
-	workers "debitllama.com/relayer/workers"
+	"debitllama.com/relayer/workers"
 	cli "github.com/urfave/cli"
 )
 
@@ -37,13 +35,18 @@ func GetApp() *cli.App {
 		Usage: "Add this flag when developing using localhost",
 	}
 
+	networkFlag := &cli.StringSliceFlag{
+		Name:  "chain",
+		Usage: "List the networks you want to process transactions on. Example: --chain btt --chain btt_testnet etc..",
+	}
+
 	app.Commands = []cli.Command{
 		{
 			Name:    "balances",
 			Aliases: []string{"b"},
 			Usage:   "Get the relayer balances",
 			Action: func(c *cli.Context) error {
-				eth.GetRelayerBalances()
+				workers.GetRelayerBalances()
 				return nil
 			},
 		},
@@ -57,6 +60,8 @@ func GetApp() *cli.App {
 				devenv := c.Bool("dev")
 				password := c.String("password")
 
+				chains := c.StringSlice("chain")
+
 				if xrelayer == "" {
 					log.Fatalln("Missing XRelayer token")
 				}
@@ -67,7 +72,17 @@ func GetApp() *cli.App {
 					log.Fatalln("Missing password")
 				}
 
-				workers.StartWorkers(devenv, xrelayer, authkey, password)
+				if len(chains) == 0 {
+					log.Fatalln("You need to use at least 1 --chain")
+				}
+
+				workers.StartWorkers(workers.CliArgs{
+					Devenv:   devenv,
+					Xrelayer: xrelayer,
+					Authkey:  authkey,
+					Password: password,
+					Chains:   chains,
+				})
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -75,6 +90,7 @@ func GetApp() *cli.App {
 				xrelayerFlag,
 				authkeyFlag,
 				devenvFlag,
+				networkFlag,
 			},
 		},
 		{
@@ -86,7 +102,7 @@ func GetApp() *cli.App {
 					log.Fatal("Need to enter a password")
 				} else {
 					password := c.String("password")
-					eth.CreateKs(password)
+					workers.CreateKs(password)
 				}
 
 				return nil
@@ -95,12 +111,16 @@ func GetApp() *cli.App {
 				passwdFlag,
 			},
 		},
+		{
+			Name:    "list_chains",
+			Aliases: []string{"lsch"},
+			Usage:   "List all available chains",
+			Action: func(c *cli.Context) error {
+				workers.PrintChainIdsHelp()
+				return nil
+			},
+		},
 	}
 
 	return app
-}
-
-// Hello returns a greeting for something as a test
-func Hello(name string) {
-	fmt.Printf("hi, %v. Welcome!", name)
 }
